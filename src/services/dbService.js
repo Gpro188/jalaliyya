@@ -56,7 +56,7 @@ export const uploadPdf = async (fileUri, fileName, mimeType, title, category) =>
   try {
     // Read the file securely from the device as a Base64 string
     const base64 = await FileSystem.readAsStringAsync(fileUri, {
-      encoding: FileSystem.EncodingType.Base64,
+      encoding: 'base64',
     });
     
     // Convert Base64 into an ArrayBuffer for Supabase upload
