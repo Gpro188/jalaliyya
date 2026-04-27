@@ -1,5 +1,6 @@
 import React, { useContext } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createDrawerNavigator } from '@react-navigation/drawer';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -36,6 +37,8 @@ function HomeStack() {
 
 function BottomTabs() {
   const { theme } = useContext(ThemeContext);
+  const insets = useSafeAreaInsets();
+  
   return (
     <Tab.Navigator 
       screenOptions={{ 
@@ -48,8 +51,8 @@ function BottomTabs() {
           shadowOffset: { width: 0, height: -2 },
           shadowOpacity: 0.1,
           shadowRadius: 4,
-          height: 60,
-          paddingBottom: 10,
+          height: 60 + insets.bottom,
+          paddingBottom: insets.bottom + 10,
           paddingTop: 10,
         },
         tabBarActiveTintColor: theme.NAVY,

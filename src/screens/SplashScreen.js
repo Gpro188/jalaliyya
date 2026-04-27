@@ -35,10 +35,10 @@ export default function SplashScreen({ navigation }) {
       withTiming(1, { duration: 800 }), // Wait for phase 1 to finish
       withDelay(1000, withTiming(1.02, { duration: 350 })),
       withTiming(1, { duration: 350 }),
-      // Phase 4: The Transition (2.5s - 3.0s)
       withTiming(20, { duration: 500, easing: Easing.in(Easing.exp) }, (finished) => {
         if (finished) {
-          runOnJS(navigation.replace)('MainApp');
+          const navigateToMain = () => navigation.replace('MainApp');
+          runOnJS(navigateToMain)();
         }
       })
     );
