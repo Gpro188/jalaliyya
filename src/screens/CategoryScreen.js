@@ -8,18 +8,27 @@ export default function CategoryScreen({ route, navigation }) {
   const [pdfs, setPdfs] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchCategoryPdfs = async () => {
+    const data = await getPdfFilesByCategory(category.name);
+    setPdfs(data);
+  };
+
   useEffect(() => {
-    const fetchCategoryPdfs = async () => {
+    const loadInitialData = async () => {
       setLoading(true);
-      const data = await getPdfFilesByCategory(category.name);
-      setPdfs(data);
+      if (category.name) await fetchCategoryPdfs();
       setLoading(false);
     };
-
-    if (category.name) {
-      fetchCategoryPdfs();
-    }
+    loadInitialData();
   }, [category]);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    if (category.name) await fetchCategoryPdfs();
+    setRefreshing(false);
+  };
 
   const openPdf = (pdf) => {
     navigation.navigate('PdfViewer', { pdf });
@@ -32,7 +41,7 @@ export default function CategoryScreen({ route, navigation }) {
       </View>
       <View style={styles.pdfInfo}>
         <Text style={styles.pdfTitle}>{item.title}</Text>
-        <Text style={styles.pdfSubtitle}>Version {item.version}</Text>
+        <Text style={styles.pdfSubtitle}>Version {item.version || '1.0'}</Text>
       </View>
       <View style={styles.actionContainer}>
         {item.updateAvailable && (
@@ -60,6 +69,8 @@ export default function CategoryScreen({ route, navigation }) {
           renderItem={renderItem}
           keyExtractor={item => item.id}
           contentContainerStyle={styles.listContainer}
+          onRefresh={onRefresh}
+          refreshing={refreshing}
         />
       )}
     </View>
