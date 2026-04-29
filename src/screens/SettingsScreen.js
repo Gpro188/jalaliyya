@@ -1,10 +1,10 @@
 import React, { useContext } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Switch } from 'react-native';
 import { ThemeContext } from '../context/ThemeContext';
 import { Check } from 'lucide-react-native';
 
 export default function SettingsScreen({ navigation }) {
-  const { theme, themeName, changeTheme, THEMES } = useContext(ThemeContext);
+  const { theme, themeName, changeTheme, THEMES, isCounterEnabled, toggleCounter } = useContext(ThemeContext);
 
   const renderThemeOption = (key, themeOption) => {
     const isSelected = themeName === key;
@@ -40,6 +40,24 @@ export default function SettingsScreen({ navigation }) {
         </View>
       </View>
       
+      <View style={styles.section}>
+        <Text style={[styles.sectionTitle, { color: theme.NAVY }]}>Features</Text>
+        <Text style={[styles.sectionSubtitle, { color: theme.NAVY }]}>Customize app features</Text>
+        
+        <View style={styles.featureRow}>
+          <View style={styles.featureInfo}>
+            <Text style={[styles.featureTitle, { color: theme.NAVY }]}>PDF Tally Counter</Text>
+            <Text style={[styles.featureDesc, { color: theme.NAVY }]}>Enable floating counter on PDF view</Text>
+          </View>
+          <Switch
+            trackColor={{ false: '#767577', true: theme.TURQUOISE }}
+            thumbColor={isCounterEnabled ? theme.NAVY : '#f4f3f4'}
+            onValueChange={toggleCounter}
+            value={isCounterEnabled}
+          />
+        </View>
+      </View>
+
       <View style={styles.section}>
         <Text style={[styles.sectionTitle, { color: theme.NAVY }]}>About</Text>
         <Text style={[styles.aboutText, { color: theme.NAVY }]}>Jalaliyya PDF Reader v1.0</Text>
@@ -94,6 +112,25 @@ const styles = StyleSheet.create({
   themeName: {
     fontSize: 16,
     fontWeight: '600',
+  },
+  featureRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 10,
+  },
+  featureInfo: {
+    flex: 1,
+    paddingRight: 15,
+  },
+  featureTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  featureDesc: {
+    fontSize: 13,
+    opacity: 0.7,
   },
   aboutText: {
     fontSize: 16,

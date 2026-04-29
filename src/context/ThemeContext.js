@@ -29,22 +29,27 @@ export const ThemeContext = createContext();
 
 export const ThemeProvider = ({ children }) => {
   const [themeName, setThemeName] = useState('blue');
+  const [isCounterEnabled, setIsCounterEnabled] = useState(false);
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    const loadTheme = async () => {
+    const loadSettings = async () => {
       try {
         const savedTheme = await AsyncStorage.getItem('@app_theme');
         if (savedTheme && THEMES[savedTheme]) {
           setThemeName(savedTheme);
         }
+        const savedCounter = await AsyncStorage.getItem('@counter_enabled');
+        if (savedCounter !== null) {
+          setIsCounterEnabled(savedCounter === 'true');
+        }
       } catch (error) {
-        console.error('Failed to load theme', error);
+        console.error('Failed to load settings', error);
       } finally {
         setIsReady(true);
       }
     };
-    loadTheme();
+    loadSettings();
   }, []);
 
   const changeTheme = async (name) => {
@@ -56,10 +61,27 @@ export const ThemeProvider = ({ children }) => {
     }
   };
 
+  const toggleCounter = async () => {
+    try {
+      const newValue = !isCounterEnabled;
+      setIsCounterEnabled(newValue);
+      await AsyncStorage.setItem('@counter_enabled', newValue ? 'true' : 'false');
+    } catch (error) {
+      console.error('Failed to save counter setting', error);
+    }
+  };
+
   if (!isReady) return null; // Wait for theme to load before rendering children
 
   return (
-    <ThemeContext.Provider value={{ theme: THEMES[themeName], themeName, changeTheme, THEMES }}>
+    <ThemeContext.Provider value={{ 
+      theme: THEMES[themeName], 
+      themeName, 
+      changeTheme, 
+      THEMES,
+      isCounterEnabled,
+      toggleCounter
+    }}>
       {children}
     </ThemeContext.Provider>
   );

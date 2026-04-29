@@ -1,50 +1,45 @@
-import React, { useEffect } from 'react';
-import { StyleSheet, View } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { StyleSheet, View, Animated } from 'react-native';
 import { ThemeContext } from '../context/ThemeContext';
-import Animated, { 
-  useSharedValue, 
-  useAnimatedStyle, 
-  withTiming, 
-  withSequence, 
-  withDelay, 
-  Easing,
-  runOnJS
-} from 'react-native-reanimated';
 
 export default function SplashScreen({ navigation }) {
   const { theme } = React.useContext(ThemeContext);
-  const opacity = useSharedValue(0);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
 
   const navigateToMain = () => {
     navigation.replace('MainApp');
   };
 
   useEffect(() => {
-    // Elegant Fade In: Fade from 0 to 1 over 1 second
-    opacity.value = withTiming(1, { duration: 1000 });
+    // Elegant Fade In
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 1000,
+      useNativeDriver: true,
+    }).start();
 
     // Fade out smoothly just before navigating
-    opacity.value = withDelay(2500, withTiming(0, { duration: 800 }));
+    setTimeout(() => {
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 800,
+        useNativeDriver: true,
+      }).start();
+    }, 2500);
 
-    // Reliable navigation fallback: switch screen after exactly 3.5 seconds
+    // Reliable navigation fallback
     const timer = setTimeout(() => {
       navigateToMain();
     }, 3500);
 
     return () => clearTimeout(timer);
-  }, []);
-
-  const animatedStyle = useAnimatedStyle(() => {
-    return {
-      opacity: opacity.value,
-    };
-  });
+  }, [fadeAnim]);
 
   return (
     <View style={[styles.container, { backgroundColor: theme.SPLASH_BG }]}>
       <Animated.Image 
         source={require('../../assets/jalaliyya-logo.png')} 
-        style={[styles.logo, animatedStyle, { tintColor: '#ffffff' }]} 
+        style={[styles.logo, { opacity: fadeAnim, tintColor: '#ffffff' }]} 
         resizeMode="contain"
       />
     </View>

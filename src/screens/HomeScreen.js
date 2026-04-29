@@ -1,9 +1,10 @@
 import React, { useContext } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView, Platform, Image, Share, Alert } from 'react-native';
 import { 
-  Menu, Heart, Share2, BookOpen, Disc, Hand, Moon, 
-  Music, ScrollText, Grid, Lightbulb, MoreHorizontal
+  Menu, Heart, Share2, BookOpenText, CircleDot, HandHeart, MoonStar, 
+  Lamp, Music, Shield, Sparkles, LayoutGrid, MoreHorizontal
 } from 'lucide-react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { ThemeContext } from '../context/ThemeContext';
 
 export default function HomeScreen({ navigation }) {
@@ -11,15 +12,15 @@ export default function HomeScreen({ navigation }) {
   const recents = ["Surah Yaseen", "Badar Moulid", "Manqoos Moulid"];
 
   const gridItems = [
-    { name: "Dikr", icon: Disc, id: 1 },
-    { name: "Dua", icon: Hand, id: 2 },
-    { name: "Swalath", icon: Moon, id: 3 },
-    { name: "Moulid", icon: BookOpen, id: 4 },
+    { name: "Dikr", icon: CircleDot, id: 1 },
+    { name: "Dua", icon: HandHeart, id: 2 },
+    { name: "Swalath", icon: MoonStar, id: 3 },
+    { name: "Moulid", icon: Lamp, id: 4 },
     { name: "Baith", icon: Music, id: 5 },
-    { name: "Malappatt", icon: ScrollText, id: 6 },
-    { name: "", icon: Grid, id: 7 }, // Prayer Rug
-    { name: "", icon: Lightbulb, id: 8 }, // Lantern
-    { name: "", icon: MoreHorizontal, id: 9 }, // Options
+    { name: "Ratheeb", icon: Shield, id: 6 },
+    { name: "Others", icon: Sparkles, id: 7 },
+    { name: "", icon: LayoutGrid, id: 8 },
+    { name: "", icon: MoreHorizontal, id: 9 },
   ];
 
   const onShare = async () => {
@@ -74,31 +75,38 @@ export default function HomeScreen({ navigation }) {
 
         {/* Main Grid: Qur'an Primary Button */}
         <View style={styles.mainGrid}>
-          <TouchableOpacity 
-            style={[styles.primaryButton, { backgroundColor: theme.TURQUOISE, shadowColor: theme.NAVY }]}
-            onPress={() => navigation.navigate('Category', { category: { name: "Qur'an" } })}
-          >
-            <View style={styles.primaryIconContainer}>
-              <BookOpen color={theme.NAVY} size={30} />
-            </View>
-            <Text style={[styles.primaryButtonText, { color: theme.NAVY }]}>Qur'an</Text>
-          </TouchableOpacity>
+          <Animated.View entering={FadeInDown.delay(100).duration(600).springify()}>
+            <TouchableOpacity 
+              style={[styles.primaryButton, { backgroundColor: theme.BACKGROUND, shadowColor: theme.NAVY }]}
+              onPress={() => navigation.navigate('Category', { category: { name: "Qur'an" } })}
+            >
+              <View style={[styles.primaryIconContainer, { backgroundColor: theme.TURQUOISE }]}>
+                <BookOpenText color={theme.NAVY} size={32} />
+              </View>
+              <Text style={[styles.primaryButtonText, { color: theme.NAVY }]}>Qur'an</Text>
+            </TouchableOpacity>
+          </Animated.View>
 
           {/* Secondary Grid (3x3) */}
           <View style={styles.secondaryGrid}>
-            {gridItems.map((item) => {
+            {gridItems.map((item, index) => {
               const Icon = item.icon;
               return (
-                <TouchableOpacity 
+                <Animated.View 
                   key={item.id} 
-                  style={[styles.gridItem, { backgroundColor: theme.TURQUOISE, shadowColor: theme.NAVY }]}
-                  onPress={() => item.name ? navigation.navigate('Category', { category: item }) : null}
+                  entering={FadeInDown.delay(200 + (index * 50)).duration(500).springify()}
+                  style={styles.gridItemWrapper}
                 >
-                  <View style={styles.gridIconContainer}>
-                    <Icon color={theme.NAVY} size={24} />
-                  </View>
-                  {item.name ? <Text style={[styles.gridItemText, { color: theme.NAVY }]}>{item.name}</Text> : null}
-                </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.gridItem, { backgroundColor: theme.BACKGROUND, shadowColor: theme.NAVY }]}
+                    onPress={() => item.name ? navigation.navigate('Category', { category: item }) : null}
+                  >
+                    <View style={[styles.gridIconContainer, { backgroundColor: theme.TURQUOISE }]}>
+                      <Icon color={theme.NAVY} size={24} />
+                    </View>
+                    {item.name ? <Text style={[styles.gridItemText, { color: theme.NAVY }]}>{item.name}</Text> : null}
+                  </TouchableOpacity>
+                </Animated.View>
               );
             })}
           </View>
@@ -180,18 +188,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20 
   },
   primaryButton: {
-    borderRadius: 20,
-    padding: 25,
+    borderRadius: 24,
+    padding: 20,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
     marginBottom: 20,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 5,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 15,
+    elevation: 8,
   },
   primaryIconContainer: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
     marginRight: 15,
   },
   primaryButtonText: {
@@ -203,24 +215,32 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     justifyContent: 'space-between',
   },
+  gridItemWrapper: {
+    width: '31%',
+    marginBottom: 15,
+  },
   gridItem: {
-    width: '30%', // roughly 3 columns
+    width: '100%',
     aspectRatio: 1, // square buttons
-    borderRadius: 15,
+    borderRadius: 20,
     padding: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 15,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 5,
   },
   gridIconContainer: {
-    marginBottom: 8,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
   },
   gridItemText: { 
-    fontSize: 13, 
+    fontSize: 12, 
     fontWeight: '600', 
     textAlign: 'center'
   }

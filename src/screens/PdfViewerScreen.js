@@ -1,20 +1,14 @@
-import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, Platform, Linking, TouchableOpacity } from 'react-native';
+import React, { useState, useContext } from 'react';
+import { View, Text, StyleSheet, Platform, TouchableOpacity, SafeAreaView } from 'react-native';
+import { WebView } from 'react-native-webview';
+import * as Haptics from 'expo-haptics';
+import { ThemeContext } from '../context/ThemeContext';
+import { ArrowLeft } from 'lucide-react-native';
 
 export default function PdfViewerScreen({ route, navigation }) {
   const { pdf } = route.params || {};
-
-  useEffect(() => {
-    if (pdf && pdf.url && Platform.OS === 'web') {
-      // On web, just open the PDF in a new tab
-      window.open(pdf.url, '_blank');
-      navigation.goBack();
-    } else if (pdf && pdf.url) {
-      // On mobile, we can also use Linking to open the native PDF viewer
-      Linking.openURL(pdf.url);
-      navigation.goBack();
-    }
-  }, [pdf, navigation]);
+  const { isCounterEnabled, theme } = useContext(ThemeContext);
+  const [tallyCount, setTallyCount] = useState(0);
 
   if (!pdf || !pdf.url) {
     return (
@@ -24,19 +18,115 @@ export default function PdfViewerScreen({ route, navigation }) {
     );
   }
 
+  // Use Google Docs Viewer for Android/Web to display PDF, iOS can handle raw PDF url
+  const pdfSource = Platform.OS === 'ios' 
+    ? { uri: pdf.url } 
+    : { uri: `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(pdf.url)}` };
+
+  const handleTally = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setTallyCount(prev => prev + 1);
+  };
+
+  const handleReset = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setTallyCount(0);
+  };
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.loadingText}>Opening PDF...</Text>
-      <TouchableOpacity onPress={() => navigation.goBack()} style={styles.button}>
-        <Text style={styles.buttonText}>Go Back</Text>
-      </TouchableOpacity>
-    </View>
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+          <ArrowLeft color="#fff" size={24} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle} numberOfLines={1}>{pdf.title}</Text>
+      </View>
+
+      <WebView 
+        source={pdfSource}
+        style={styles.webview}
+        startInLoadingState={true}
+      />
+
+      {isCounterEnabled && (
+        <View style={styles.counterOverlay}>
+          <TouchableOpacity 
+            style={[styles.tallyButton, { backgroundColor: theme.NAVY, shadowColor: theme.NAVY }]} 
+            onPress={handleTally}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.tallyText}>{tallyCount}</Text>
+            <Text style={styles.tallyLabel}>TAP</Text>
+          </TouchableOpacity>
+          
+          {tallyCount > 0 && (
+            <TouchableOpacity style={styles.resetButton} onPress={handleReset}>
+              <Text style={styles.resetText}>Reset</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
-  loadingText: { fontSize: 18, marginBottom: 20 },
-  button: { padding: 15, backgroundColor: '#1976D2', borderRadius: 8 },
-  buttonText: { color: '#fff', fontWeight: 'bold' }
+  container: { flex: 1, backgroundColor: '#000' },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 15,
+    backgroundColor: '#0B1933',
+  },
+  backBtn: {
+    marginRight: 15,
+  },
+  headerTitle: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+    flex: 1,
+  },
+  webview: {
+    flex: 1,
+  },
+  counterOverlay: {
+    position: 'absolute',
+    bottom: 40,
+    right: 20,
+    alignItems: 'center',
+  },
+  tallyButton: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 8,
+  },
+  tallyText: {
+    color: '#fff',
+    fontSize: 26,
+    fontWeight: 'bold',
+  },
+  tallyLabel: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 10,
+    fontWeight: 'bold',
+    marginTop: -2,
+  },
+  resetButton: {
+    marginTop: 10,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 15,
+  },
+  resetText: {
+    color: '#fff',
+    fontSize: 12,
+  }
 });
