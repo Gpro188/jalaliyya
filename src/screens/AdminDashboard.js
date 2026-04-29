@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, FlatList, Alert, Modal, TextInput, ActivityIndicator, Platform } from 'react-native';
 import { FileText, Plus, Trash2, LogOut, X, Upload } from 'lucide-react-native';
 import * as DocumentPicker from 'expo-document-picker';
-import { getPdfFiles, uploadPdf, deletePdf } from '../services/dbService';
+import { getPdfFiles, uploadPdf, deletePdf, getCategories, addCategory, deleteCategory } from '../services/dbService';
 
 export default function AdminDashboard({ navigation }) {
   const [pdfs, setPdfs] = useState([]);
@@ -15,11 +15,59 @@ export default function AdminDashboard({ navigation }) {
   const [category, setCategory] = useState("Qur'an");
   const [selectedFile, setSelectedFile] = useState(null);
 
-  const categories = ["Qur'an", "Moulid", "Dikr", "Dua", "Swalath", "Baith", "Malappatt"];
+  const [categories, setCategories] = useState([]);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [categoryLoading, setCategoryLoading] = useState(true);
 
   useEffect(() => {
     fetchPdfs();
+    fetchCategories();
   }, []);
+
+  const fetchCategories = async () => {
+    setCategoryLoading(true);
+    const data = await getCategories();
+    setCategories(data);
+    // If no category selected but we have categories, select first one
+    if (!category && data.length > 0) {
+      setCategory(data[0].name);
+    }
+    setCategoryLoading(false);
+  };
+
+  const handleAddCategory = async () => {
+    if (!newCategoryName.trim()) return;
+    const response = await addCategory(newCategoryName.trim());
+    if (response.success) {
+      setNewCategoryName('');
+      fetchCategories();
+    } else {
+      Alert.alert("Error", response.error);
+    }
+  };
+
+  const handleDeleteCategory = (id, name) => {
+    Alert.alert(
+      "Delete Category",
+      `Are you sure you want to delete "${name}"?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        { 
+          text: "Delete", 
+          style: "destructive",
+          onPress: async () => {
+            const response = await deleteCategory(id);
+            if (response.success) {
+              fetchCategories();
+              if (category === name) setCategory('');
+            } else {
+              Alert.alert("Error", response.error);
+            }
+          }
+        }
+      ]
+    );
+  };
 
   const fetchPdfs = async () => {
     setLoading(true);
@@ -116,6 +164,48 @@ export default function AdminDashboard({ navigation }) {
     </View>
   );
 
+  const renderHeader = () => (
+    <View style={styles.headerSection}>
+      {/* Category Management */}
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>Manage Categories</Text>
+      </View>
+      <View style={styles.addCategoryContainer}>
+        <TextInput 
+          style={styles.addCategoryInput} 
+          placeholder="New Category Name" 
+          value={newCategoryName} 
+          onChangeText={setNewCategoryName} 
+        />
+        <TouchableOpacity style={styles.addCategoryButton} onPress={handleAddCategory}>
+          <Text style={styles.addCategoryButtonText}>Add</Text>
+        </TouchableOpacity>
+      </View>
+      <View style={styles.categoryListContainer}>
+        {categoryLoading ? <ActivityIndicator color="#1976D2" /> : categories.map(cat => (
+          <View key={cat.id} style={styles.categoryItem}>
+            <Text style={styles.categoryItemText}>{cat.name}</Text>
+            <TouchableOpacity onPress={() => handleDeleteCategory(cat.id, cat.name)}>
+              <Trash2 color="#FF3B30" size={18} />
+            </TouchableOpacity>
+          </View>
+        ))}
+      </View>
+
+      {/* PDF Management Header */}
+      <View style={[styles.sectionHeader, { marginTop: 30 }]}>
+        <Text style={styles.sectionTitle}>Manage PDFs</Text>
+        <TouchableOpacity 
+          style={styles.addButton}
+          onPress={() => setModalVisible(true)}
+        >
+          <Plus color="#fff" size={20} />
+          <Text style={styles.addButtonText}>Upload New</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -127,16 +217,6 @@ export default function AdminDashboard({ navigation }) {
       </View>
 
       <View style={styles.content}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Manage PDFs</Text>
-          <TouchableOpacity 
-            style={styles.addButton}
-            onPress={() => setModalVisible(true)}
-          >
-            <Plus color="#fff" size={20} />
-            <Text style={styles.addButtonText}>Upload New</Text>
-          </TouchableOpacity>
-        </View>
 
         {loading ? (
           <ActivityIndicator size="large" color="#1976D2" style={{ marginTop: 50 }} />
@@ -146,6 +226,7 @@ export default function AdminDashboard({ navigation }) {
             renderItem={renderPdfItem}
             keyExtractor={item => item.id}
             contentContainerStyle={styles.listContainer}
+            ListHeaderComponent={renderHeader}
             ListEmptyComponent={
               <Text style={styles.emptyText}>No PDFs uploaded yet. Click "Upload New" to add one.</Text>
             }
@@ -184,12 +265,12 @@ export default function AdminDashboard({ navigation }) {
             <View style={styles.categoryChips}>
               {categories.map(cat => (
                 <TouchableOpacity 
-                  key={cat} 
-                  style={[styles.chip, category === cat && styles.chipActive]}
-                  onPress={() => setCategory(cat)}
+                  key={cat.id} 
+                  style={[styles.chip, category === cat.name && styles.chipActive]}
+                  onPress={() => setCategory(cat.name)}
                   disabled={uploading}
                 >
-                  <Text style={[styles.chipText, category === cat && styles.chipTextActive]}>{cat}</Text>
+                  <Text style={[styles.chipText, category === cat.name && styles.chipTextActive]}>{cat.name}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -425,5 +506,53 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  headerSection: {
+    marginBottom: 10,
+  },
+  addCategoryContainer: {
+    flexDirection: 'row',
+    marginBottom: 15,
+  },
+  addCategoryInput: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 8,
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    marginRight: 10,
+  },
+  addCategoryButton: {
+    backgroundColor: '#0B1933',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    borderRadius: 8,
+  },
+  addCategoryButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  categoryListContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  categoryItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#eee',
+    borderRadius: 20,
+    paddingVertical: 8,
+    paddingHorizontal: 15,
+  },
+  categoryItemText: {
+    marginRight: 8,
+    color: '#333',
+    fontWeight: '500',
   }
 });

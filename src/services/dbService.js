@@ -1,5 +1,5 @@
 import { supabase } from '../config/supabase';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { decode } from 'base64-arraybuffer';
 
 // Fetch all categories, ordered by display_order
@@ -15,6 +15,38 @@ export const getCategories = async () => {
   } catch (error) {
     console.error('Error fetching categories:', error);
     return [];
+  }
+};
+
+// Add a new category
+export const addCategory = async (name) => {
+  try {
+    const { data, error } = await supabase
+      .from('categories')
+      .insert([{ name, display_order: 99 }])
+      .select();
+
+    if (error) throw error;
+    return { success: true, data };
+  } catch (error) {
+    console.error('Error adding category:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Delete a category
+export const deleteCategory = async (id) => {
+  try {
+    const { error } = await supabase
+      .from('categories')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+    return { success: true };
+  } catch (error) {
+    console.error('Error deleting category:', error);
+    return { success: false, error: error.message };
   }
 };
 

@@ -14,7 +14,6 @@ import Animated, {
 export default function SplashScreen({ navigation }) {
   const { theme } = React.useContext(ThemeContext);
   const opacity = useSharedValue(1);
-  const scale = useSharedValue(0.8);
   const rotation = useSharedValue(0);
 
   const navigateToMain = () => {
@@ -22,22 +21,14 @@ export default function SplashScreen({ navigation }) {
   };
 
   useEffect(() => {
-    // Phase 1: The Emergence
-    scale.value = withTiming(1, { duration: 800 });
+    // Executive Rotation: Smoothly rotate 15 degrees right over 1.5 seconds, then stop
+    rotation.value = withTiming(15, { 
+      duration: 1500, 
+      easing: Easing.out(Easing.exp) 
+    });
 
-    // Phase 2: The Geometric Bloom (0.8s - 1.8s)
-    // Rotate 10 degrees slowly
-    rotation.value = withDelay(
-      800, 
-      withTiming(10, { duration: 1000, easing: Easing.out(Easing.exp) })
-    );
-
-    // Phase 3: The Spiritual Stillness (1.8s - 2.5s)
-    // Subtle breathing effect (scale to 1.02 and back down)
-    scale.value = withSequence(
-      withTiming(1, { duration: 800 }), // Wait for phase 1 to finish
-      withDelay(1000, withTiming(1.02, { duration: 350 })),
-    );
+    // Fade out smoothly just before navigating
+    opacity.value = withDelay(2500, withTiming(0, { duration: 800 }));
 
     // Reliable navigation fallback: switch screen after exactly 3.5 seconds
     const timer = setTimeout(() => {
@@ -51,7 +42,6 @@ export default function SplashScreen({ navigation }) {
     return {
       opacity: opacity.value,
       transform: [
-        { scale: scale.value },
         { rotate: `${rotation.value}deg` }
       ],
     };
@@ -61,7 +51,7 @@ export default function SplashScreen({ navigation }) {
     <View style={[styles.container, { backgroundColor: theme.SPLASH_BG }]}>
       <Animated.Image 
         source={require('../../assets/jalaliyya-logo.png')} 
-        style={[styles.logo, animatedStyle]} 
+        style={[styles.logo, animatedStyle, { tintColor: '#ffffff' }]} 
         resizeMode="contain"
       />
     </View>
