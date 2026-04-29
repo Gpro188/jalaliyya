@@ -13,13 +13,16 @@ import Animated, {
 
 export default function SplashScreen({ navigation }) {
   const { theme } = React.useContext(ThemeContext);
-  const opacity = useSharedValue(0);
+  const opacity = useSharedValue(1);
   const scale = useSharedValue(0.8);
   const rotation = useSharedValue(0);
 
+  const navigateToMain = () => {
+    navigation.replace('MainApp');
+  };
+
   useEffect(() => {
-    // Phase 1: The Emergence (0s - 0.8s)
-    opacity.value = withTiming(1, { duration: 800 });
+    // Phase 1: The Emergence
     scale.value = withTiming(1, { duration: 800 });
 
     // Phase 2: The Geometric Bloom (0.8s - 1.8s)
@@ -34,17 +37,14 @@ export default function SplashScreen({ navigation }) {
     scale.value = withSequence(
       withTiming(1, { duration: 800 }), // Wait for phase 1 to finish
       withDelay(1000, withTiming(1.02, { duration: 350 })),
-      withTiming(1, { duration: 350 }),
-      withTiming(20, { duration: 500, easing: Easing.in(Easing.exp) }, (finished) => {
-        if (finished) {
-          const navigateToMain = () => navigation.replace('MainApp');
-          runOnJS(navigateToMain)();
-        }
-      })
     );
 
-    // Fade out during transition
-    opacity.value = withDelay(2500, withTiming(0, { duration: 500 }));
+    // Reliable navigation fallback: switch screen after exactly 3.5 seconds
+    const timer = setTimeout(() => {
+      navigateToMain();
+    }, 3500);
+
+    return () => clearTimeout(timer);
   }, []);
 
   const animatedStyle = useAnimatedStyle(() => {
