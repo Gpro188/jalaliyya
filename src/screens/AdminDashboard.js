@@ -26,10 +26,20 @@ export default function AdminDashboard({ navigation }) {
 
   const fetchCategories = async () => {
     setCategoryLoading(true);
-    const data = await getCategories();
-    setCategories(data);
+    let data = await getCategories();
+    
+    // Auto-seed default categories if the database is empty
+    if (data && data.length === 0) {
+      const defaultCats = ["Qur'an", "Moulid", "Dikr", "Dua", "Swalath", "Baith", "Malappatt"];
+      for (const cat of defaultCats) {
+        await addCategory(cat);
+      }
+      data = await getCategories(); // Refetch after seeding
+    }
+
+    setCategories(data || []);
     // If no category selected but we have categories, select first one
-    if (!category && data.length > 0) {
+    if (!category && data && data.length > 0) {
       setCategory(data[0].name);
     }
     setCategoryLoading(false);

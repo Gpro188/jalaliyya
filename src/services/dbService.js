@@ -94,8 +94,9 @@ export const uploadPdf = async (fileUri, fileName, mimeType, title, category) =>
     // Convert Base64 into an ArrayBuffer for Supabase upload
     const arrayBuffer = decode(base64);
 
-    // Create a unique file path
-    const uniqueFileName = `${Date.now()}_${fileName.replace(/\s+/g, '_')}`;
+    // Create a unique file path (sanitize to prevent Invalid Key error with Arabic/special characters)
+    const safeFileName = fileName.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+    const uniqueFileName = `${Date.now()}_${safeFileName}`;
     const filePath = `public/${uniqueFileName}`;
 
     // Upload to Storage bucket 'pdfs'
