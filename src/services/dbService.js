@@ -86,10 +86,14 @@ export const getPdfFilesByCategory = async (categoryName) => {
 // Upload a PDF to Supabase Storage and insert into DB
 export const uploadPdf = async (fileUri, fileName, mimeType, title, category) => {
   try {
+    console.log('Starting upload...', { fileUri, fileName, mimeType, title, category });
+    
     // Read the file securely from the device as a Base64 string
     const base64 = await FileSystem.readAsStringAsync(fileUri, {
       encoding: 'base64',
     });
+    
+    console.log('File read successfully, size:', base64.length);
     
     // Convert Base64 into an ArrayBuffer for Supabase upload
     const arrayBuffer = decode(base64);
@@ -99,6 +103,8 @@ export const uploadPdf = async (fileUri, fileName, mimeType, title, category) =>
     const uniqueFileName = `${Date.now()}_${safeFileName}`;
     const filePath = `public/${uniqueFileName}`;
 
+    console.log('Uploading to path:', filePath);
+
     // Upload to Storage bucket 'pdfs'
     const { data: storageData, error: storageError } = await supabase.storage
       .from('pdfs')
@@ -107,7 +113,12 @@ export const uploadPdf = async (fileUri, fileName, mimeType, title, category) =>
         upsert: false,
       });
 
-    if (storageError) throw storageError;
+    if (storageError) {
+      console.error('Storage upload error:', storageError);
+      throw storageError;
+    }
+
+    console.log('Storage upload successful:', storageData);
 
     // Get the public URL
     const { data: publicUrlData } = supabase.storage
@@ -115,6 +126,7 @@ export const uploadPdf = async (fileUri, fileName, mimeType, title, category) =>
       .getPublicUrl(filePath);
 
     const publicURL = publicUrlData.publicUrl;
+    console.log('Public URL:', publicURL);
 
     // Insert into database
     const { data: dbData, error: dbError } = await supabase
@@ -128,8 +140,12 @@ export const uploadPdf = async (fileUri, fileName, mimeType, title, category) =>
       ])
       .select();
 
-    if (dbError) throw dbError;
+    if (dbError) {
+      console.error('Database insert error:', dbError);
+      throw dbError;
+    }
 
+    console.log('Database insert successful:', dbData);
     return { success: true, data: dbData };
   } catch (error) {
     console.error('Upload failed:', error);
@@ -140,30 +156,43 @@ export const uploadPdf = async (fileUri, fileName, mimeType, title, category) =>
 // Delete a PDF
 export const deletePdf = async (pdfId, fileUrl) => {
   try {
+    console.log('Deleting PDF:', { pdfId, fileUrl });
+    
     // 1. Extract file path from URL if needed
     // The public URL looks like: .../storage/v1/object/public/pdfs/public/filename.pdf
-    const urlParts = fileUrl.split('/pdfs/');
-    if (urlParts.length > 1) {
-      const filePath = urlParts[1];
-      
-      // Delete from Storage
-      const { error: storageError } = await supabase.storage
-        .from('pdfs')
-        .remove([filePath]);
+    if (fileUrl) {
+      const urlParts = fileUrl.split('/pdfs/');
+      if (urlParts.length > 1) {
+        const filePath = urlParts[1];
         
-      if (storageError) {
-        console.error('Storage deletion error:', storageError);
+        console.log('Deleting from storage:', filePath);
+        
+        // Delete from Storage
+        const { error: storageError } = await supabase.storage
+          .from('pdfs')
+          .remove([filePath]);
+          
+        if (storageError) {
+          console.error('Storage deletion error:', storageError);
+        } else {
+          console.log('Storage deletion successful');
+        }
       }
     }
 
     // 2. Delete from DB
+    console.log('Deleting from database:', pdfId);
     const { error: dbError } = await supabase
       .from('pdf_files')
       .delete()
       .eq('id', pdfId);
 
-    if (dbError) throw dbError;
+    if (dbError) {
+      console.error('Database deletion error:', dbError);
+      throw dbError;
+    }
     
+    console.log('Database deletion successful');
     return { success: true };
   } catch (error) {
     console.error('Delete failed:', error);

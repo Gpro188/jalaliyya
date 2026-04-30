@@ -1,9 +1,11 @@
 // Local Storage Service - Handles local PDF storage and metadata
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 
 const KEYS = {
   DOWNLOADED_PDFS: 'downloaded_pdfs',
+  FAVORITE_PDFS: 'favorite_pdfs',
+  RECENT_PDFS: 'recent_pdfs',
   LAST_CHECKED_VERSION: 'last_checked_version',
   APP_VERSION: 'app_version'
 };
@@ -202,4 +204,118 @@ export const deleteLocalPDF = async (pdfId) => {
  */
 export const getAllLocalPDFs = async () => {
   return await getDownloadedPDFs();
+};
+
+/**
+ * Get list of favorite PDFs
+ */
+export const getFavoritePDFs = async () => {
+  try {
+    const pdfs = await AsyncStorage.getItem(KEYS.FAVORITE_PDFS);
+    return pdfs ? JSON.parse(pdfs) : [];
+  } catch (error) {
+    console.error('Error getting favorite PDFs:', error);
+    return [];
+  }
+};
+
+/**
+ * Add or remove a PDF from favorites
+ */
+export const toggleFavoritePDF = async (pdf) => {
+  try {
+    const pdfs = await getFavoritePDFs();
+    const existingIndex = pdfs.findIndex(p => p.id === pdf.id);
+    
+    if (existingIndex >= 0) {
+      // Remove from favorites
+      pdfs.splice(existingIndex, 1);
+    } else {
+      // Add to favorites
+      pdfs.push({
+        id: pdf.id,
+        title: pdf.title,
+        category: pdf.category,
+        url: pdf.url,
+        localUri: pdf.localUri || null,
+        isDownloaded: pdf.isDownloaded || false,
+        favoritedAt: new Date().toISOString()
+      });
+    }
+    
+    await AsyncStorage.setItem(KEYS.FAVORITE_PDFS, JSON.stringify(pdfs));
+    return existingIndex < 0; // Return true if added, false if removed
+  } catch (error) {
+    console.error('Error toggling favorite PDF:', error);
+    return false;
+  }
+};
+
+/**
+ * Check if a PDF is in favorites
+ */
+export const isPDFFavorite = async (pdfId) => {
+  try {
+    const pdfs = await getFavoritePDFs();
+    return pdfs.some(p => p.id === pdfId);
+  } catch (error) {
+    console.error('Error checking if PDF is favorite:', error);
+    return false;
+  }
+};
+
+/**
+ * Add PDF to recent list
+ */
+export const addRecentPDF = async (pdf) => {
+  try {
+    if (!pdf || !pdf.id) {
+      console.warn('Invalid PDF object:', pdf);
+      return false;
+    }
+
+    console.log('Adding to recent:', pdf.title);
+    
+    const pdfs = await getRecentPDFs();
+    
+    // Remove if already exists
+    const existingIndex = pdfs.findIndex(p => p.id === pdf.id);
+    if (existingIndex >= 0) {
+      pdfs.splice(existingIndex, 1);
+    }
+    
+    // Add to beginning of list
+    pdfs.unshift({
+      id: pdf.id,
+      title: pdf.title,
+      category: pdf.category,
+      url: pdf.url,
+      localUri: pdf.localUri || null,
+      isDownloaded: pdf.isDownloaded || false,
+      viewedAt: new Date().toISOString()
+    });
+    
+    // Keep only last 10 recent PDFs
+    const limitedPdfs = pdfs.slice(0, 10);
+    
+    await AsyncStorage.setItem(KEYS.RECENT_PDFS, JSON.stringify(limitedPdfs));
+    console.log('Recent PDFs saved, total:', limitedPdfs.length);
+    return true;
+  } catch (error) {
+    console.error('Error adding recent PDF:', error);
+    return false;
+  }
+};
+
+/**
+ * Get list of recent PDFs
+ */
+export const getRecentPDFs = async () => {
+  try {
+    const pdfs = await AsyncStorage.getItem(KEYS.RECENT_PDFS);
+    return pdfs ? JSON.parse(pdfs) : [];
+  } catch (error) {
+    console.error('Error getting recent PDFs:', error);
+    return [];
+  }
 };

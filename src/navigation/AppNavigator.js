@@ -24,13 +24,25 @@ const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 const Drawer = createDrawerNavigator();
 
+// Admin Stack - MOVED UP to be available before use
+function AdminStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="AdminLogin" component={AdminLogin} />
+      <Stack.Screen name="AdminDashboard" component={AdminDashboard} />
+    </Stack.Navigator>
+  );
+}
+
 // Stack Navigator for Home -> Category -> PDF
 function HomeStack() {
   return (
     <Stack.Navigator>
       <Stack.Screen name="HomeScreen" component={HomeScreen} options={{ headerShown: false }} />
       <Stack.Screen name="Category" component={CategoryScreen} />
-      <Stack.Screen name="PdfViewer" component={PdfViewerScreen} options={{ title: 'PDF Viewer' }} />
+      <Stack.Screen name="PdfViewer" component={PdfViewerScreen} options={({ route }) => ({
+        title: route.params?.pdf?.category || 'PDF Viewer',
+      })} />
     </Stack.Navigator>
   );
 }
@@ -128,15 +140,5 @@ export default function AppNavigator() {
         <RootStack.Screen name="MainApp" component={RootDrawer} />
       </RootStack.Navigator>
     </NavigationContainer>
-  );
-}
-
-// Admin Stack
-function AdminStack() {
-  return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="AdminLogin" component={AdminLogin} />
-      <Stack.Screen name="AdminDashboard" component={AdminDashboard} />
-    </Stack.Navigator>
   );
 }

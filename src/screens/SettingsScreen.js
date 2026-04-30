@@ -2,6 +2,7 @@ import React, { useContext } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Switch } from 'react-native';
 import { ThemeContext } from '../context/ThemeContext';
 import { Check } from 'lucide-react-native';
+import IslamicBackground from '../components/IslamicBackground';
 
 export default function SettingsScreen({ navigation }) {
   const { theme, themeName, changeTheme, THEMES, isCounterEnabled, toggleCounter } = useContext(ThemeContext);
@@ -12,57 +13,59 @@ export default function SettingsScreen({ navigation }) {
     return (
       <TouchableOpacity 
         key={key} 
-        style={[styles.themeOption, { borderColor: isSelected ? themeOption.NAVY : '#ccc' }]}
+        style={[styles.themeOption, { borderColor: isSelected ? themeOption.NAVY : theme.BORDER, backgroundColor: theme.CARD_BG }]}
         onPress={() => changeTheme(key)}
       >
         <View style={styles.themePreview}>
           <View style={[styles.colorBox, { backgroundColor: themeOption.NAVY }]} />
           <View style={[styles.colorBox, { backgroundColor: themeOption.TURQUOISE }]} />
-          <View style={[styles.colorBox, { backgroundColor: themeOption.BACKGROUND, borderWidth: 1, borderColor: '#eee' }]} />
+          <View style={[styles.colorBox, { backgroundColor: themeOption.BACKGROUND, borderWidth: 1, borderColor: theme.BORDER }]} />
         </View>
         
         <View style={styles.themeInfo}>
-          <Text style={[styles.themeName, { color: theme.NAVY }]}>{themeOption.name}</Text>
-          {isSelected && <Check color={theme.NAVY} size={20} />}
+          <Text style={[styles.themeName, { color: theme.TEXT_PRIMARY }]}>{themeOption.name}</Text>
+          {isSelected && <Check color={theme.TEXT_PRIMARY} size={20} />}
         </View>
       </TouchableOpacity>
     );
   };
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: theme.BACKGROUND }]}>
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: theme.NAVY }]}>Appearance</Text>
-        <Text style={[styles.sectionSubtitle, { color: theme.NAVY }]}>Choose your preferred app theme</Text>
-        
-        <View style={styles.themeList}>
-          {Object.keys(THEMES).map(key => renderThemeOption(key, THEMES[key]))}
-        </View>
-      </View>
-      
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: theme.NAVY }]}>Features</Text>
-        <Text style={[styles.sectionSubtitle, { color: theme.NAVY }]}>Customize app features</Text>
-        
-        <View style={styles.featureRow}>
-          <View style={styles.featureInfo}>
-            <Text style={[styles.featureTitle, { color: theme.NAVY }]}>PDF Tally Counter</Text>
-            <Text style={[styles.featureDesc, { color: theme.NAVY }]}>Enable floating counter on PDF view</Text>
+    <IslamicBackground theme={theme} intensity="light">
+      <ScrollView style={styles.container}>
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: theme.TEXT_PRIMARY }]}>Appearance</Text>
+          <Text style={[styles.sectionSubtitle, { color: theme.TEXT_SECONDARY }]}>Choose your preferred app theme</Text>
+          
+          <View style={styles.themeList}>
+            {Object.keys(THEMES).map(key => renderThemeOption(key, THEMES[key]))}
           </View>
-          <Switch
-            trackColor={{ false: '#767577', true: theme.TURQUOISE }}
-            thumbColor={isCounterEnabled ? theme.NAVY : '#f4f3f4'}
-            onValueChange={toggleCounter}
-            value={isCounterEnabled}
-          />
         </View>
-      </View>
+        
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: theme.TEXT_PRIMARY }]}>Features</Text>
+          <Text style={[styles.sectionSubtitle, { color: theme.TEXT_SECONDARY }]}>Customize app features</Text>
+          
+          <View style={styles.featureRow}>
+            <View style={styles.featureInfo}>
+              <Text style={[styles.featureTitle, { color: theme.TEXT_PRIMARY }]}>PDF Tally Counter</Text>
+              <Text style={[styles.featureDesc, { color: theme.TEXT_SECONDARY }]}>Enable floating counter on PDF view</Text>
+            </View>
+            <Switch
+              trackColor={{ false: '#767577', true: theme.TURQUOISE }}
+              thumbColor={isCounterEnabled ? theme.NAVY : '#f4f3f4'}
+              onValueChange={toggleCounter}
+              value={isCounterEnabled}
+            />
+          </View>
+        </View>
 
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: theme.NAVY }]}>About</Text>
-        <Text style={[styles.aboutText, { color: theme.NAVY }]}>Jalaliyya PDF Reader v1.0</Text>
-      </View>
-    </ScrollView>
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: theme.TEXT_PRIMARY }]}>About</Text>
+          <Text style={[styles.aboutText, { color: theme.TEXT_SECONDARY }]}>Jalaliyya PDF Reader v1.0</Text>
+        </View>
+      </ScrollView>
+    </IslamicBackground>
   );
 }
 

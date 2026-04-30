@@ -1,27 +1,69 @@
-import React, { useContext } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView, Platform, Image, Share, Alert } from 'react-native';
+import React, { useContext, useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView, Platform, Image, Share, Alert, ActivityIndicator, RefreshControl } from 'react-native';
 import { 
-  Menu, Heart, Share2, BookOpenText, CircleDot, HandHeart, MoonStar, 
-  Lamp, Music, Shield, Sparkles, LayoutGrid, MoreHorizontal
+  Menu, Heart, Share2, RefreshCw, BookOpen, MoonStar, Stars, Music, Sparkles, Mic2, BookMarked
 } from 'lucide-react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { ThemeContext } from '../context/ThemeContext';
+import { checkForUpdates } from '../services/SyncService';
+import { getRecentPDFs } from '../services/localStorage';
+import IslamicBackground from '../components/IslamicBackground';
 
 export default function HomeScreen({ navigation }) {
   const { theme } = useContext(ThemeContext);
-  const recents = ["Surah Yaseen", "Badar Moulid", "Manqoos Moulid"];
+  const [recentPDFs, setRecentPDFs] = useState([]);
+  const [isCheckingUpdates, setIsCheckingUpdates] = useState(false);
+
+  useEffect(() => {
+    loadRecentPDFs();
+    
+    // Reload recent PDFs when screen comes into focus
+    const unsubscribe = navigation.addListener('focus', () => {
+      loadRecentPDFs();
+    });
+    
+    return unsubscribe;
+  }, []);
+
+  const loadRecentPDFs = async () => {
+    try {
+      const recents = await getRecentPDFs();
+      console.log('Loaded recent PDFs:', recents.length);
+      setRecentPDFs(recents);
+    } catch (error) {
+      console.error('Error loading recent PDFs:', error);
+    }
+  };
 
   const gridItems = [
-    { name: "Dikr", icon: CircleDot, id: 1 },
-    { name: "Dua", icon: HandHeart, id: 2 },
-    { name: "Swalath", icon: MoonStar, id: 3 },
-    { name: "Moulid", icon: Lamp, id: 4 },
+    { name: "Dikr", icon: MoonStar, id: 1 },
+    { name: "Dua", icon: BookOpen, id: 2 },
+    { name: "Swalath", icon: Stars, id: 3 },
+    { name: "Moulid", icon: Sparkles, id: 4 },
     { name: "Baith", icon: Music, id: 5 },
-    { name: "Ratheeb", icon: Shield, id: 6 },
-    { name: "Others", icon: Sparkles, id: 7 },
-    { name: "", icon: LayoutGrid, id: 8 },
-    { name: "", icon: MoreHorizontal, id: 9 },
+    { name: "Ratheeb", icon: Mic2, id: 6 },
+    { name: "Others", icon: BookMarked, id: 7 },
   ];
+
+  const handleCheckForUpdates = async () => {
+    setIsCheckingUpdates(true);
+    try {
+      const updates = await checkForUpdates();
+      if (updates && updates.length > 0) {
+        Alert.alert(
+          'Updates Available',
+          `${updates.length} new PDF(s) available for download. Go to the respective category to download.`,
+          [{ text: 'OK' }]
+        );
+      } else {
+        Alert.alert('No Updates', 'You have the latest PDFs!', [{ text: 'OK' }]);
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to check for updates. Please try again.');
+    } finally {
+      setIsCheckingUpdates(false);
+    }
+  };
 
   const onShare = async () => {
     try {
@@ -34,86 +76,114 @@ export default function HomeScreen({ navigation }) {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.BACKGROUND }]}>
-      {/* Header Area (1/4 of screen) */}
-      <View style={[styles.headerContainer, { backgroundColor: theme.BACKGROUND }]}>
-        <View style={styles.topBar}>
-          <TouchableOpacity style={styles.iconBtn} onPress={() => navigation.toggleDrawer()}>
-            <Menu color={theme.NAVY} size={28} />
-          </TouchableOpacity>
-          <View style={styles.rightIcons}>
-            <TouchableOpacity style={styles.iconBtn} onPress={() => navigation.navigate('Favorites')}>
-              <Heart color={theme.NAVY} size={24} />
+    <IslamicBackground theme={theme} intensity="medium">
+      <SafeAreaView style={styles.container}>
+        {/* Header Area (1/4 of screen) */}
+        <View style={styles.headerContainer}>
+          <View style={styles.topBar}>
+            <TouchableOpacity style={styles.iconBtn} onPress={() => navigation.toggleDrawer()}>
+              <Menu color={theme.TEXT_PRIMARY} size={28} />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.iconBtn} onPress={onShare}>
-              <Share2 color={theme.NAVY} size={24} />
-            </TouchableOpacity>
+            <View style={styles.rightIcons}>
+              <TouchableOpacity style={styles.iconBtn} onPress={handleCheckForUpdates} disabled={isCheckingUpdates}>
+                {isCheckingUpdates ? <ActivityIndicator color={theme.TEXT_PRIMARY} size="small" /> : <RefreshCw color={theme.TEXT_PRIMARY} size={24} />}
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.iconBtn} onPress={() => navigation.navigate('Favorites')}>
+                <Heart color={theme.TEXT_PRIMARY} size={24} />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.iconBtn} onPress={onShare}>
+                <Share2 color={theme.TEXT_PRIMARY} size={24} />
+              </TouchableOpacity>
+            </View>
+          </View>
+          <View style={styles.logoWrapper}>
+            <Image 
+              source={require('../../assets/jalaliyya-logo.png')} 
+              style={styles.headerLogo} 
+              resizeMode="contain" 
+            />
           </View>
         </View>
-        <View style={styles.logoWrapper}>
-          <Image 
-            source={require('../../assets/jalaliyya-logo.png')} 
-            style={styles.headerLogo} 
-            resizeMode="contain" 
-          />
-        </View>
-      </View>
 
-      <View style={styles.contentContainer}>
-        <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Recent Carousels */}
-        <View style={styles.recentSection}>
-          <Text style={[styles.sectionTitle, { color: theme.NAVY }]}>Recent</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.recentScroll}>
-            {recents.map((item, index) => (
-              <TouchableOpacity key={index} style={[styles.recentPill, { backgroundColor: theme.TURQUOISE, shadowColor: theme.NAVY }]}>
-                <Text style={[styles.recentPillText, { color: theme.NAVY }]}>{item}</Text>
+        <View style={styles.contentContainer}>
+          <ScrollView 
+            contentContainerStyle={styles.scrollContent}
+            refreshControl={
+              <RefreshControl 
+                refreshing={false}
+                onRefresh={loadRecentPDFs}
+                tintColor={theme.TEXT_PRIMARY}
+                colors={[theme.TEXT_PRIMARY]}
+              />
+            }
+          >
+          {/* Recent Carousels */}
+          {recentPDFs.length > 0 ? (
+            <View style={styles.recentSection}>
+              <Text style={[styles.sectionTitle, { color: theme.TEXT_PRIMARY }]}>Recent</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.recentScroll}>
+                {recentPDFs.map((item, index) => (
+                  <TouchableOpacity 
+                    key={index} 
+                    style={[styles.recentPill, { backgroundColor: theme.TURQUOISE, shadowColor: theme.NAVY }]}
+                    onPress={() => navigation.navigate('PdfViewer', { pdf: item })}
+                  >
+                    <Text style={[styles.recentPillText, { color: theme.TEXT_PRIMARY }]} numberOfLines={1}>{item.title}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          ) : (
+            <View style={styles.recentSection}>
+              <Text style={[styles.sectionTitle, { color: theme.TEXT_PRIMARY }]}>Recent</Text>
+              <View style={styles.emptyRecentContainer}>
+                <Text style={[styles.emptyRecentText, { color: theme.TEXT_SECONDARY }]}>No recent PDFs yet</Text>
+                <Text style={[styles.emptyRecentSubtext, { color: theme.TEXT_SECONDARY }]}>Open a PDF to see it here</Text>
+              </View>
+            </View>
+          )}
+
+          {/* Main Grid: Qur'an Primary Button */}
+          <View style={styles.mainGrid}>
+            <Animated.View entering={FadeInDown.delay(100).duration(600).springify()}>
+              <TouchableOpacity 
+                style={[styles.primaryButton, { backgroundColor: theme.CARD_BG, shadowColor: theme.NAVY }]}
+                onPress={() => navigation.navigate('Category', { category: { name: "Qur'an" } })}
+              >
+                <View style={[styles.primaryIconContainer, { backgroundColor: theme.TURQUOISE }]}>
+                  <Text style={{ fontSize: 32 }}>📖</Text>
+                </View>
+                <Text style={[styles.primaryButtonText, { color: theme.TEXT_PRIMARY }]}>Qur'an</Text>
               </TouchableOpacity>
-            ))}
+            </Animated.View>
+
+            {/* Secondary Grid (3x3) */}
+            <View style={styles.secondaryGrid}>
+              {gridItems.map((item, index) => {
+                return (
+                  <Animated.View 
+                    key={item.id} 
+                    entering={FadeInDown.delay(200 + (index * 50)).duration(500).springify()}
+                    style={styles.gridItemWrapper}
+                  >
+                    <TouchableOpacity 
+                      style={[styles.gridItem, { backgroundColor: theme.CARD_BG, shadowColor: theme.NAVY }]}
+                      onPress={() => navigation.navigate('Category', { category: item })}
+                    >
+                      <View style={[styles.gridIconContainer, { backgroundColor: theme.TURQUOISE }]}>
+                        <item.icon color={theme.TEXT_PRIMARY} size={28} />
+                      </View>
+                      <Text style={[styles.gridItemText, { color: theme.TEXT_PRIMARY }]}>{item.name}</Text>
+                    </TouchableOpacity>
+                  </Animated.View>
+                );
+              })}
+            </View>
+          </View>
           </ScrollView>
         </View>
-
-        {/* Main Grid: Qur'an Primary Button */}
-        <View style={styles.mainGrid}>
-          <Animated.View entering={FadeInDown.delay(100).duration(600).springify()}>
-            <TouchableOpacity 
-              style={[styles.primaryButton, { backgroundColor: theme.BACKGROUND, shadowColor: theme.NAVY }]}
-              onPress={() => navigation.navigate('Category', { category: { name: "Qur'an" } })}
-            >
-              <View style={[styles.primaryIconContainer, { backgroundColor: theme.TURQUOISE }]}>
-                <BookOpenText color={theme.NAVY} size={32} />
-              </View>
-              <Text style={[styles.primaryButtonText, { color: theme.NAVY }]}>Qur'an</Text>
-            </TouchableOpacity>
-          </Animated.View>
-
-          {/* Secondary Grid (3x3) */}
-          <View style={styles.secondaryGrid}>
-            {gridItems.map((item, index) => {
-              const Icon = item.icon;
-              return (
-                <Animated.View 
-                  key={item.id} 
-                  entering={FadeInDown.delay(200 + (index * 50)).duration(500).springify()}
-                  style={styles.gridItemWrapper}
-                >
-                  <TouchableOpacity 
-                    style={[styles.gridItem, { backgroundColor: theme.BACKGROUND, shadowColor: theme.NAVY }]}
-                    onPress={() => item.name ? navigation.navigate('Category', { category: item }) : null}
-                  >
-                    <View style={[styles.gridIconContainer, { backgroundColor: theme.TURQUOISE }]}>
-                      <Icon color={theme.NAVY} size={24} />
-                    </View>
-                    {item.name ? <Text style={[styles.gridItemText, { color: theme.NAVY }]}>{item.name}</Text> : null}
-                  </TouchableOpacity>
-                </Animated.View>
-              );
-            })}
-          </View>
-        </View>
-        </ScrollView>
-      </View>
-    </SafeAreaView>
+      </SafeAreaView>
+    </IslamicBackground>
   );
 }
 
@@ -183,6 +253,19 @@ const styles = StyleSheet.create({
   recentPillText: { 
     fontWeight: '600',
     fontSize: 15,
+  },
+  emptyRecentContainer: {
+    paddingVertical: 20,
+    paddingHorizontal: 10,
+  },
+  emptyRecentText: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  emptyRecentSubtext: {
+    fontSize: 12,
+    opacity: 0.7,
   },
   mainGrid: { 
     paddingHorizontal: 20 

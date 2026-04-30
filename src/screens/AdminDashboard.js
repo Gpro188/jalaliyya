@@ -1,8 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, FlatList, Alert, Modal, TextInput, ActivityIndicator, Platform } from 'react-native';
-import { FileText, Plus, Trash2, LogOut, X, Upload } from 'lucide-react-native';
+import { FileText, Plus, Trash2, LogOut, X, Upload, Key } from 'lucide-react-native';
 import * as DocumentPicker from 'expo-document-picker';
-import { getPdfFiles, uploadPdf, deletePdf, getCategories, addCategory, deleteCategory } from '../services/dbService';
+import { getPdfFiles, uploadPdf, deletePdf } from '../services/dbService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const ADMIN_CREDENTIALS_KEY = '@admin_credentials';
+
+// Fixed categories - cannot be modified
+const CATEGORIES = [
+  "Qur'an",
+  "Dikr",
+  "Dua",
+  "Swalath",
+  "Moulid",
+  "Baith",
+  "Ratheeb",
+  "Others"
+];
 
 export default function AdminDashboard({ navigation }) {
   const [pdfs, setPdfs] = useState([]);
@@ -12,72 +27,23 @@ export default function AdminDashboard({ navigation }) {
   
   // Form State
   const [title, setTitle] = useState('');
-  const [category, setCategory] = useState("Qur'an");
+  const [selectedCategory, setSelectedCategory] = useState("Qur'an");
   const [selectedFile, setSelectedFile] = useState(null);
-
-  const [categories, setCategories] = useState([]);
-  const [newCategoryName, setNewCategoryName] = useState('');
-  const [categoryLoading, setCategoryLoading] = useState(true);
+  
+  // Credentials Change State
+  const [credentialsModalVisible, setCredentialsModalVisible] = useState(false);
+  const [currentUsername, setCurrentUsername] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newUsername, setNewUsername] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [changingCredentials, setChangingCredentials] = useState(false);
 
   useEffect(() => {
     fetchPdfs();
-    fetchCategories();
   }, []);
 
-  const fetchCategories = async () => {
-    setCategoryLoading(true);
-    let data = await getCategories();
-    
-    // Auto-seed default categories if the database is empty
-    if (data && data.length === 0) {
-      const defaultCats = ["Qur'an", "Moulid", "Dikr", "Dua", "Swalath", "Baith", "Malappatt"];
-      for (const cat of defaultCats) {
-        await addCategory(cat);
-      }
-      data = await getCategories(); // Refetch after seeding
-    }
 
-    setCategories(data || []);
-    // If no category selected but we have categories, select first one
-    if (!category && data && data.length > 0) {
-      setCategory(data[0].name);
-    }
-    setCategoryLoading(false);
-  };
-
-  const handleAddCategory = async () => {
-    if (!newCategoryName.trim()) return;
-    const response = await addCategory(newCategoryName.trim());
-    if (response.success) {
-      setNewCategoryName('');
-      fetchCategories();
-    } else {
-      Alert.alert("Error", response.error);
-    }
-  };
-
-  const handleDeleteCategory = (id, name) => {
-    Alert.alert(
-      "Delete Category",
-      `Are you sure you want to delete "${name}"?`,
-      [
-        { text: "Cancel", style: "cancel" },
-        { 
-          text: "Delete", 
-          style: "destructive",
-          onPress: async () => {
-            const response = await deleteCategory(id);
-            if (response.success) {
-              fetchCategories();
-              if (category === name) setCategory('');
-            } else {
-              Alert.alert("Error", response.error);
-            }
-          }
-        }
-      ]
-    );
-  };
 
   const fetchPdfs = async () => {
     setLoading(true);
@@ -88,6 +54,111 @@ export default function AdminDashboard({ navigation }) {
 
   const handleLogout = () => {
     navigation.replace('AdminLogin');
+  };
+
+  const handleChangeCredentials = async () => {
+    // Validation
+    if (!currentUsername.trim() || !currentPassword.trim()) {
+      Alert.alert('Missing Fields', 'Please enter your current username and password.');
+      return;
+    }
+
+    if (!newUsername.trim() || !newPassword.trim()) {
+      Alert.alert('Missing Fields', 'Please enter new username and password.');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      Alert.alert('Password Mismatch', 'New password and confirmation do not match.');
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      Alert.alert('Weak Password', 'Password must be at least 6 characters long.');
+      return;
+    }
+
+    // Verify current credentials
+    const defaultCredentials = [
+      { username: 'admin', password: 'admin123' },
+      { username: 'admin', password: '188JALALIYYA188' },
+      { username: 'jalaliyya', password: 'admin123' }
+    ];
+
+    const stored = await AsyncStorage.getItem(ADMIN_CREDENTIALS_KEY);
+    const storedCreds = stored ? JSON.parse(stored) : null;
+    
+    const allCredentials = storedCreds 
+      ? [storedCreds, ...defaultCredentials]
+      : defaultCredentials;
+
+    const isCurrentValid = allCredentials.some(cred =>
+      currentUsername.trim().toLowerCase() === cred.username.toLowerCase() &&
+      currentPassword.trim() === cred.password
+    );
+
+    if (!isCurrentValid) {
+      Alert.alert('Invalid Credentials', 'Current username or password is incorrect.');
+      return;
+    }
+
+    // Save new credentials
+    setChangingCredentials(true);
+    try {
+      const newCreds = {
+        username: newUsername.trim().toLowerCase(),
+        password: newPassword.trim()
+      };
+
+      await AsyncStorage.setItem(ADMIN_CREDENTIALS_KEY, JSON.stringify(newCreds));
+      
+      Alert.alert(
+        'Success',
+        'Credentials changed successfully! Please use your new credentials next time.',
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              setCredentialsModalVisible(false);
+              setCurrentUsername('');
+              setCurrentPassword('');
+              setNewUsername('');
+              setNewPassword('');
+              setConfirmPassword('');
+              handleLogout();
+            }
+          }
+        ]
+      );
+    } catch (error) {
+      Alert.alert('Error', 'Failed to save credentials. Please try again.');
+      console.error('Error saving credentials:', error);
+    } finally {
+      setChangingCredentials(false);
+    }
+  };
+
+  const handleResetCredentials = async () => {
+    Alert.alert(
+      'Reset Credentials',
+      'Are you sure you want to reset to default credentials (admin/admin123)?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reset',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await AsyncStorage.removeItem(ADMIN_CREDENTIALS_KEY);
+              Alert.alert('Success', 'Credentials reset to default. Please login again.');
+              handleLogout();
+            } catch (error) {
+              Alert.alert('Error', 'Failed to reset credentials.');
+            }
+          }
+        }
+      ]
+    );
   };
 
   const pickDocument = async () => {
@@ -107,18 +178,20 @@ export default function AdminDashboard({ navigation }) {
   };
 
   const handleUpload = async () => {
-    if (!title || !category || !selectedFile) {
-      Alert.alert("Missing Fields", "Please provide a title, category, and select a PDF file.");
+    if (!title.trim() || !selectedFile) {
+      Alert.alert("Missing Fields", "Please provide a title and select a PDF file.");
       return;
     }
 
     setUploading(true);
+    console.log('Starting upload:', { title, category: selectedCategory, fileName: selectedFile.name });
+    
     const response = await uploadPdf(
       selectedFile.uri, 
       selectedFile.name, 
       selectedFile.mimeType, 
-      title, 
-      category
+      title.trim(), 
+      selectedCategory
     );
 
     setUploading(false);
@@ -128,9 +201,11 @@ export default function AdminDashboard({ navigation }) {
       setModalVisible(false);
       setTitle('');
       setSelectedFile(null);
+      setSelectedCategory("Qur'an");
       fetchPdfs(); // Refresh the list
     } else {
-      Alert.alert("Upload Failed", response.error);
+      console.error('Upload error:', response.error);
+      Alert.alert("Upload Failed", response.error || "Failed to upload PDF. Please try again.");
     }
   };
 
@@ -176,34 +251,7 @@ export default function AdminDashboard({ navigation }) {
 
   const renderHeader = () => (
     <View style={styles.headerSection}>
-      {/* Category Management */}
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Manage Categories</Text>
-      </View>
-      <View style={styles.addCategoryContainer}>
-        <TextInput 
-          style={styles.addCategoryInput} 
-          placeholder="New Category Name" 
-          value={newCategoryName} 
-          onChangeText={setNewCategoryName} 
-        />
-        <TouchableOpacity style={styles.addCategoryButton} onPress={handleAddCategory}>
-          <Text style={styles.addCategoryButtonText}>Add</Text>
-        </TouchableOpacity>
-      </View>
-      <View style={styles.categoryListContainer}>
-        {categoryLoading ? <ActivityIndicator color="#1976D2" /> : categories.map(cat => (
-          <View key={cat.id} style={styles.categoryItem}>
-            <Text style={styles.categoryItemText}>{cat.name}</Text>
-            <TouchableOpacity onPress={() => handleDeleteCategory(cat.id, cat.name)}>
-              <Trash2 color="#FF3B30" size={18} />
-            </TouchableOpacity>
-          </View>
-        ))}
-      </View>
-
-      {/* PDF Management Header */}
-      <View style={[styles.sectionHeader, { marginTop: 30 }]}>
         <Text style={styles.sectionTitle}>Manage PDFs</Text>
         <TouchableOpacity 
           style={styles.addButton}
@@ -220,10 +268,18 @@ export default function AdminDashboard({ navigation }) {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Admin Dashboard</Text>
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <LogOut color="#fff" size={20} />
-          <Text style={styles.logoutText}>Logout</Text>
-        </TouchableOpacity>
+        <View style={styles.headerButtons}>
+          <TouchableOpacity 
+            style={styles.credentialsButton}
+            onPress={() => setCredentialsModalVisible(true)}
+          >
+            <Key color="#fff" size={20} />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+            <LogOut color="#fff" size={20} />
+            <Text style={styles.logoutText}>Logout</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.content}>
@@ -271,16 +327,16 @@ export default function AdminDashboard({ navigation }) {
               editable={!uploading}
             />
 
-            <Text style={styles.label}>Category</Text>
+            <Text style={styles.label}>Select Category</Text>
             <View style={styles.categoryChips}>
-              {categories.map(cat => (
+              {CATEGORIES.map((cat) => (
                 <TouchableOpacity 
-                  key={cat.id} 
-                  style={[styles.chip, category === cat.name && styles.chipActive]}
-                  onPress={() => setCategory(cat.name)}
+                  key={cat} 
+                  style={[styles.chip, selectedCategory === cat && styles.chipActive]}
+                  onPress={() => setSelectedCategory(cat)}
                   disabled={uploading}
                 >
-                  <Text style={[styles.chipText, category === cat.name && styles.chipTextActive]}>{cat.name}</Text>
+                  <Text style={[styles.chipText, selectedCategory === cat && styles.chipTextActive]}>{cat}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -311,6 +367,97 @@ export default function AdminDashboard({ navigation }) {
           </View>
         </View>
       </Modal>
+
+      {/* Change Credentials Modal */}
+      <Modal
+        visible={credentialsModalVisible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => !changingCredentials && setCredentialsModalVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Change Credentials</Text>
+            {!changingCredentials && (
+              <TouchableOpacity onPress={() => setCredentialsModalVisible(false)}>
+                <X color="#333" size={28} />
+              </TouchableOpacity>
+            )}
+          </View>
+
+          <View style={styles.formContainer}>
+            <Text style={styles.label}>Current Username</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter current username"
+              value={currentUsername}
+              onChangeText={setCurrentUsername}
+              editable={!changingCredentials}
+              autoCapitalize="none"
+            />
+
+            <Text style={styles.label}>Current Password</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter current password"
+              value={currentPassword}
+              onChangeText={setCurrentPassword}
+              editable={!changingCredentials}
+              secureTextEntry
+            />
+
+            <Text style={styles.label}>New Username</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter new username"
+              value={newUsername}
+              onChangeText={setNewUsername}
+              editable={!changingCredentials}
+              autoCapitalize="none"
+            />
+
+            <Text style={styles.label}>New Password</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter new password (min 6 characters)"
+              value={newPassword}
+              onChangeText={setNewPassword}
+              editable={!changingCredentials}
+              secureTextEntry
+            />
+
+            <Text style={styles.label}>Confirm New Password</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Confirm new password"
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              editable={!changingCredentials}
+              secureTextEntry
+            />
+
+            <TouchableOpacity 
+              style={[styles.submitButton, changingCredentials && styles.submitButtonDisabled]} 
+              onPress={handleChangeCredentials}
+              disabled={changingCredentials}
+            >
+              {changingCredentials ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.submitText}>Update Credentials</Text>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.resetButton} 
+              onPress={handleResetCredentials}
+              disabled={changingCredentials}
+            >
+              <Text style={styles.resetText}>Reset to Default</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -332,6 +479,20 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 22,
     fontWeight: 'bold',
+    flex: 1,
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  credentialsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
   },
   logoutButton: {
     flexDirection: 'row',
@@ -464,6 +625,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 10,
+    marginBottom: 15,
   },
   chip: {
     paddingHorizontal: 15,
@@ -564,5 +726,19 @@ const styles = StyleSheet.create({
     marginRight: 8,
     color: '#333',
     fontWeight: '500',
+  },
+  resetButton: {
+    backgroundColor: '#FFF0F0',
+    padding: 18,
+    borderRadius: 10,
+    alignItems: 'center',
+    marginTop: 15,
+    borderWidth: 1,
+    borderColor: '#FF3B30',
+  },
+  resetText: {
+    color: '#FF3B30',
+    fontSize: 16,
+    fontWeight: 'bold',
   }
 });

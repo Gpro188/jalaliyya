@@ -1,16 +1,64 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const ADMIN_CREDENTIALS_KEY = '@admin_credentials';
 
 export default function AdminLogin({ navigation }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [storedCredentials, setStoredCredentials] = useState(null);
+
+  useEffect(() => {
+    loadStoredCredentials();
+  }, []);
+
+  const loadStoredCredentials = async () => {
+    try {
+      const stored = await AsyncStorage.getItem(ADMIN_CREDENTIALS_KEY);
+      if (stored) {
+        setStoredCredentials(JSON.parse(stored));
+      }
+    } catch (error) {
+      console.error('Error loading credentials:', error);
+    }
+  };
 
   const handleLogin = () => {
-    // Hardcoded for now as requested
-    if (username === 'admin' && password === 'admin123') {
+    console.log('Login attempt:', { username, password });
+    
+    // Trim whitespace and convert to lowercase for username
+    const trimmedUsername = username.trim().toLowerCase();
+    const trimmedPassword = password.trim();
+    
+    console.log('Trimmed values:', { trimmedUsername, trimmedPassword });
+    
+    // Default credentials
+    const defaultCredentials = [
+      { username: 'admin', password: 'admin123' },
+      { username: 'admin', password: '188JALALIYYA188' },
+      { username: 'jalaliyya', password: 'admin123' }
+    ];
+    
+    // Check stored credentials first, then default ones
+    const allCredentials = storedCredentials 
+      ? [storedCredentials, ...defaultCredentials]
+      : defaultCredentials;
+    
+    const isValid = allCredentials.some(cred => 
+      trimmedUsername === cred.username.toLowerCase() && trimmedPassword === cred.password
+    );
+    
+    if (isValid) {
+      console.log('Login successful!');
       navigation.replace('AdminDashboard');
     } else {
-      Alert.alert('Error', 'Invalid credentials');
+      console.log('Login failed!');
+      Alert.alert(
+        'Invalid Credentials',
+        'Please check your username and password.',
+        [{ text: 'OK' }]
+      );
     }
   };
 
